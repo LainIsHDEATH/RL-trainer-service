@@ -1,6 +1,6 @@
 import uuid
 import asyncio
-from fastapi import APIRouter, BackgroundTasks, FastAPI, HTTPException
+from fastapi import APIRouter, BackgroundTasks, FastAPI, HTTPException, Request
 from app.schemas.train import TrainRequest, TrainReply
 from app.schemas.compute import  ComputeRequest, ComputeReply
 
@@ -12,22 +12,9 @@ import logging
 router = APIRouter()
 logger = logging.getLogger("rl_trainer")
 
-@router.on_event("startup")
-async def _start_gc():
-    app = router  # in FastAPI 0.110+ можно получить приложение из роутера
-    asyncio.create_task(_trainer_gc(app))
-
-async def _trainer_gc(app: FastAPI):
-    while True:
-        await asyncio.sleep(60)
-        now = asyncio.get_event_loop().time()
-        to_del = [sid for sid, e in app.state.trainers.items() if now - e["last_touch"] > TRAINER_TTL_SEC]
-        for sid in to_del:
-            logger.info("Trainer %s removed due to inactivity", sid)
-            app.state.trainers.pop(sid, None)
-
 @router.post("/train", response_model=TrainReply)
-async def train(req: TrainRequest, bg: BackgroundTasks, app: FastAPI):
+async def train(req: TrainRequest, bg: BackgroundTasks, request: Request):
+    app = request.app
     sim_id = await create_simulation(
         req.room_id, "TRAIN_RL", req.iterations, req.timestep_seconds
     )
@@ -57,7 +44,8 @@ async def train(req: TrainRequest, bg: BackgroundTasks, app: FastAPI):
     return {"message": "Training initialized", "simulationId": sim_id, "job_id": job_id}
 
 @router.post("/compute", response_model=ComputeReply)
-async def compute(step: ComputeRequest, app: FastAPI):
+async def compute(step: ComputeRequest, request: Request):
+    app = request.app
     entry = app.state.trainers.get(step.simulation_id)
     if not entry:
         raise HTTPException(404, "No active trainer for this simulation")
