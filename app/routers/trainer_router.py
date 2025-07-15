@@ -21,7 +21,7 @@ async def train(req: TrainRequest, bg: BackgroundTasks, request: Request):
     if sim_id in app.state.trainers:
         raise HTTPException(400, "Trainer already exists for this simulation")
     agent = QLearningAgent(
-        n_bins=30,
+        n_bins=101,
         total_steps=req.iterations,
         lr=req.lr,
         gamma=req.gamma,

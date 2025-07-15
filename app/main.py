@@ -10,6 +10,15 @@ logger = logging.getLogger("rl_trainer")
 app = FastAPI(title="RL Trainer")
 app.include_router(train_router)
 
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.state.trainers = {}  # именно здесь создаём state
 
 from app.config import TRAINER_TTL_SEC
